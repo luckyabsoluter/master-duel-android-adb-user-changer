@@ -1,0 +1,21 @@
+.root {
+    -fx-font-family: "Segoe UI";
+    -fx-base: #f7f7f7;
+}
+
+.header-bar {
+    -fx-background-color: linear-gradient(to right, #f1f1f1, #e6e6e6);
+    -fx-padding: 10;
+    -fx-border-color: #c9c9c9;
+    -fx-border-width: 0 0 1 0;
+}
+
+.section-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+.log-area {
+    -fx-font-family: "Consolas";
+    -fx-font-size: 12px;
+}
