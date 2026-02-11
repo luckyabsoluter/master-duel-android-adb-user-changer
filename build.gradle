@@ -54,7 +54,10 @@ dependencies {
 tasks.named('shadowJar') {
     archiveClassifier.set('all')
     manifest {
-        attributes 'Main-Class': 'opensource.master_duel_android_adb_user_changer.Launcher'
+        attributes(
+                'Main-Class': 'opensource.master_duel_android_adb_user_changer.Launcher',
+                'Implementation-Version': project.version.toString()
+        )
     }
     mergeServiceFiles()
 }
@@ -72,11 +75,20 @@ tasks.register('universalShadowJar', com.github.jengelman.gradle.plugins.shadow.
             project.configurations.javafxMac
     ]
     manifest {
-        attributes 'Main-Class': 'opensource.master_duel_android_adb_user_changer.Launcher'
+        attributes(
+                'Main-Class': 'opensource.master_duel_android_adb_user_changer.Launcher',
+                'Implementation-Version': project.version.toString()
+        )
     }
     mergeServiceFiles()
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     zip64 true
+}
+
+tasks.named('processResources') {
+    filesMatching('version.properties') {
+        expand(appVersion: project.version.toString())
+    }
 }
 
 jlink {

@@ -17,13 +17,16 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
+import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 
 public class MainApp extends Application {
+    private final String appVersion = resolveAppVersion();
     private final SimpleStringProperty adbPath = new SimpleStringProperty("adb");
     private final AdbService adbService = new AdbService(adbPath);
 
@@ -44,7 +47,7 @@ public class MainApp extends Application {
         Scene scene = new Scene(buildRoot(), 1100, 720);
         scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
 
-        primaryStage.setTitle("Master Duel Android ADB User Changer");
+        primaryStage.setTitle("Master Duel Android ADB User Changer v" + appVersion);
         primaryStage.setScene(scene);
         primaryStage.show();
 
@@ -67,10 +70,12 @@ public class MainApp extends Application {
         Label title = new Label("Master Duel Android ADB User Changer");
         title.getStyleClass().add("section-title");
 
+        Label versionLabel = new Label("v" + appVersion);
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        header.getChildren().addAll(title, spacer);
+        header.getChildren().addAll(title, versionLabel, spacer);
         return header;
     }
 
@@ -237,6 +242,7 @@ public class MainApp extends Application {
 
         TextArea info = new TextArea("Switch Master Duel users by renaming persistent folders via ADB (root required).\n" +
                 "Metadata is stored in each persistent folder as master-duel-android-adb-user-changer-metadata.properties.\n" +
+                "Version: " + appVersion + "\n" +
                 "GitHub: " + repoUrl);
         info.setEditable(false);
         info.setWrapText(true);
@@ -513,5 +519,22 @@ public class MainApp extends Application {
 
     public static void main(String[] args) {
         launch(args);
+    }
+
+    private String resolveAppVersion() {
+        try (InputStream stream = getClass().getResourceAsStream("/version.properties")) {
+            if (stream != null) {
+                Properties props = new Properties();
+                props.load(stream);
+                String resourceVersion = props.getProperty("app.version");
+                if (resourceVersion != null && !resourceVersion.isBlank()) {
+                    return resourceVersion.trim();
+                }
+            }
+        } catch (Exception ignored) {
+            // Fallback to dev version.
+        }
+
+        return "dev";
     }
 }
