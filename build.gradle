@@ -8,6 +8,7 @@ group = 'opensource.master_duel_android_adb_user_changer'
 version = '1.0.0'
 
 def javaVersion = 25
+def javafxVersion = String.valueOf(javaVersion)
 
 java {
     toolchain {
@@ -20,12 +21,32 @@ repositories {
 }
 
 javafx {
-    version = String.valueOf(javaVersion)
+    version = javafxVersion
     modules = ['javafx.controls', 'javafx.graphics', 'javafx.fxml']
 }
 
 application {
     mainClass = 'opensource.master_duel_android_adb_user_changer.Launcher'
+}
+
+configurations {
+    javafxWin
+    javafxLinux
+    javafxMac
+}
+
+dependencies {
+    [
+            javafxWin  : 'win',
+            javafxLinux: 'linux',
+            javafxMac  : 'mac'
+    ].each { configName, platform ->
+        ['base', 'graphics', 'controls', 'fxml'].each { module ->
+            add(configName, "org.openjfx:javafx-${module}:${javafxVersion}:${platform}") {
+                transitive = false
+            }
+        }
+    }
 }
 
 tasks.named('shadowJar') {
@@ -34,6 +55,26 @@ tasks.named('shadowJar') {
         attributes 'Main-Class': 'opensource.master_duel_android_adb_user_changer.Launcher'
     }
     mergeServiceFiles()
+}
+
+tasks.register('universalShadowJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    group = 'build'
+    description = 'Builds a universal fat jar containing JavaFX native libraries for win/linux/mac.'
+
+    archiveClassifier.set('all-universal')
+    from sourceSets.main.output
+    configurations = [
+            project.configurations.runtimeClasspath,
+            project.configurations.javafxWin,
+            project.configurations.javafxLinux,
+            project.configurations.javafxMac
+    ]
+    manifest {
+        attributes 'Main-Class': 'opensource.master_duel_android_adb_user_changer.Launcher'
+    }
+    mergeServiceFiles()
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    zip64 true
 }
 
 tasks.withType(JavaCompile).configureEach {
