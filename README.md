@@ -65,7 +65,7 @@ mise use -g java@temurin-25
 ./gradlew shadowJar
 ```
 
-Output: `build/libs/master-duel-android-adb-user-changer-1.0.0-all.jar`
+Output: `build/libs/master-duel-android-adb-user-changer-1.0.1-all.jar`
 
 ### Design Notes
 - All ADB commands are executed via `adb shell su -c`.

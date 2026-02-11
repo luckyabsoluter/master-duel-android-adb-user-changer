@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'opensource.master_duel_android_adb_user_changer'
-version = '1.0.0'
+version = '1.0.1'
 
 def javaVersion = 25
 def javafxVersion = String.valueOf(javaVersion)
