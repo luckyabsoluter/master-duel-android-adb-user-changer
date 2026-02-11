@@ -25,11 +25,15 @@ javafx {
 }
 
 application {
-    mainClass = 'opensource.master_duel_android_adb_user_changer.MainApp'
+    mainClass = 'opensource.master_duel_android_adb_user_changer.Launcher'
 }
 
 tasks.named('shadowJar') {
     archiveClassifier.set('all')
+    manifest {
+        attributes 'Main-Class': 'opensource.master_duel_android_adb_user_changer.Launcher'
+    }
+    mergeServiceFiles()
 }
 
 tasks.withType(JavaCompile).configureEach {
