@@ -94,6 +94,9 @@ jlink {
         installerName = 'master-duel-android-adb-user-changer'
         installerType = 'app-image'
         appVersion = project.version.toString()
+        if (System.getProperty('os.name').toLowerCase().contains('mac')) {
+            imageOptions = ['--mac-package-identifier', 'opensource.master.duel.android.adb.user.changer']
+        }
     }
 }
 
