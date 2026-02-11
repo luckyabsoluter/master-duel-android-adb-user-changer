@@ -17,13 +17,11 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
-import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
-import java.util.Properties;
 
 public class MainApp extends Application {
     private final String appVersion = resolveAppVersion();
@@ -522,19 +520,6 @@ public class MainApp extends Application {
     }
 
     private String resolveAppVersion() {
-        try (InputStream stream = getClass().getResourceAsStream("/version.properties")) {
-            if (stream != null) {
-                Properties props = new Properties();
-                props.load(stream);
-                String resourceVersion = props.getProperty("app.version");
-                if (resourceVersion != null && !resourceVersion.isBlank()) {
-                    return resourceVersion.trim();
-                }
-            }
-        } catch (Exception ignored) {
-            // Fallback to dev version.
-        }
-
-        return "dev";
+        return (BuildConfig.VERSION == null || BuildConfig.VERSION.isBlank()) ? "dev" : BuildConfig.VERSION;
     }
 }
