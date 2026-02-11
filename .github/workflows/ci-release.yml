@@ -112,6 +112,8 @@ jobs:
       - build-matrix
       - build-universal-jar
     runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: ${{ github.ref_name }}
     steps:
       - name: Download OS jar artifacts
         uses: actions/download-artifact@v5
@@ -127,12 +129,20 @@ jobs:
           path: release-files/universal
           merge-multiple: true
 
+      - name: Prepare versioned release files
+        run: |
+          mkdir -p release-files/versioned
+          cp "release-files/os/${PROJECT_NAME}-${JAVA_VERSION_TAG}-windows.jar" "release-files/versioned/${PROJECT_NAME}-${JAVA_VERSION_TAG}-${RELEASE_VERSION}-windows.jar"
+          cp "release-files/os/${PROJECT_NAME}-${JAVA_VERSION_TAG}-linux.jar" "release-files/versioned/${PROJECT_NAME}-${JAVA_VERSION_TAG}-${RELEASE_VERSION}-linux.jar"
+          cp "release-files/os/${PROJECT_NAME}-${JAVA_VERSION_TAG}-macos.jar" "release-files/versioned/${PROJECT_NAME}-${JAVA_VERSION_TAG}-${RELEASE_VERSION}-macos.jar"
+          cp "release-files/universal/${PROJECT_NAME}-${JAVA_VERSION_TAG}-universal.jar" "release-files/versioned/${PROJECT_NAME}-${JAVA_VERSION_TAG}-${RELEASE_VERSION}-universal.jar"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release-files/os/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-windows.jar
-            release-files/os/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-linux.jar
-            release-files/os/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-macos.jar
-            release-files/universal/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-universal.jar
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-${{ env.RELEASE_VERSION }}-windows.jar
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-${{ env.RELEASE_VERSION }}-linux.jar
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-${{ env.RELEASE_VERSION }}-macos.jar
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-${{ env.RELEASE_VERSION }}-universal.jar
           generate_release_notes: true
