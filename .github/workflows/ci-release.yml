@@ -59,14 +59,14 @@ jobs:
           New-Item -ItemType Directory -Force -Path ci-artifacts | Out-Null
 
           Get-ChildItem build/libs/*-all.jar | ForEach-Object {
-            Copy-Item $_.FullName ("ci-artifacts/{0}-{1}-{2}.jar" -f $env:PROJECT_NAME, $env:JAVA_VERSION_TAG, $osName)
+            Copy-Item $_.FullName ("ci-artifacts/{0}-{1}-{2}.jar" -f $env:PROJECT_NAME, $osName, $env:JAVA_VERSION_TAG)
           }
 
       - name: Upload OS jar artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ env.PROJECT_NAME }}-${{ matrix.os }}-jar-${{ github.run_id }}
-          path: ci-artifacts/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-*.jar
+          path: ci-artifacts/${{ env.PROJECT_NAME }}-*-${{ env.JAVA_VERSION_TAG }}.jar
           if-no-files-found: error
 
       - name: Prepare native artifact file
@@ -80,7 +80,7 @@ jobs:
             throw "Native app-image not found under build/jpackage."
           }
 
-          $nativeZip = ("ci-native/{0}-{1}-{2}-native.zip" -f $env:PROJECT_NAME, $env:JAVA_VERSION_TAG, $osName)
+          $nativeZip = ("ci-native/{0}-{1}-native.zip" -f $env:PROJECT_NAME, $osName)
           if ($nativeSource.PSIsContainer) {
             $nativeSourcePattern = Join-Path $nativeSource.FullName '*'
             Compress-Archive -Path $nativeSourcePattern -DestinationPath $nativeZip -Force
@@ -92,7 +92,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: ${{ env.PROJECT_NAME }}-${{ matrix.os }}-native-${{ github.run_id }}
-          path: ci-native/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-*-native.zip
+          path: ci-native/${{ env.PROJECT_NAME }}-*-native.zip
           if-no-files-found: error
 
   build-universal-jar:
@@ -122,14 +122,14 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path ci-universal | Out-Null
           Get-ChildItem build/libs/*-all-universal.jar | ForEach-Object {
-            Copy-Item $_.FullName ("ci-universal/{0}-{1}-universal.jar" -f $env:PROJECT_NAME, $env:JAVA_VERSION_TAG)
+            Copy-Item $_.FullName ("ci-universal/{0}-universal-{1}.jar" -f $env:PROJECT_NAME, $env:JAVA_VERSION_TAG)
           }
 
       - name: Upload universal jar artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ env.PROJECT_NAME }}-universal-jar-${{ github.run_id }}
-          path: ci-universal/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-universal.jar
+          path: ci-universal/${{ env.PROJECT_NAME }}-universal-${{ env.JAVA_VERSION_TAG }}.jar
           if-no-files-found: error
 
   release-on-tag:
@@ -165,23 +165,23 @@ jobs:
       - name: Prepare versioned release files
         run: |
           mkdir -p release-files/versioned
-          cp "release-files/os/${PROJECT_NAME}-${JAVA_VERSION_TAG}-windows.jar" "release-files/versioned/${PROJECT_NAME}-${JAVA_VERSION_TAG}-${RELEASE_VERSION}-windows.jar"
-          cp "release-files/os/${PROJECT_NAME}-${JAVA_VERSION_TAG}-linux.jar" "release-files/versioned/${PROJECT_NAME}-${JAVA_VERSION_TAG}-${RELEASE_VERSION}-linux.jar"
-          cp "release-files/os/${PROJECT_NAME}-${JAVA_VERSION_TAG}-macos.jar" "release-files/versioned/${PROJECT_NAME}-${JAVA_VERSION_TAG}-${RELEASE_VERSION}-macos.jar"
-          cp "release-files/universal/${PROJECT_NAME}-${JAVA_VERSION_TAG}-universal.jar" "release-files/versioned/${PROJECT_NAME}-${JAVA_VERSION_TAG}-${RELEASE_VERSION}-universal.jar"
-          cp "release-files/native/${PROJECT_NAME}-${JAVA_VERSION_TAG}-windows-native.zip" "release-files/versioned/${PROJECT_NAME}-${JAVA_VERSION_TAG}-${RELEASE_VERSION}-windows-native.zip"
-          cp "release-files/native/${PROJECT_NAME}-${JAVA_VERSION_TAG}-linux-native.zip" "release-files/versioned/${PROJECT_NAME}-${JAVA_VERSION_TAG}-${RELEASE_VERSION}-linux-native.zip"
-          cp "release-files/native/${PROJECT_NAME}-${JAVA_VERSION_TAG}-macos-native.zip" "release-files/versioned/${PROJECT_NAME}-${JAVA_VERSION_TAG}-${RELEASE_VERSION}-macos-native.zip"
+          cp "release-files/os/${PROJECT_NAME}-windows-${JAVA_VERSION_TAG}.jar" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-windows-${JAVA_VERSION_TAG}.jar"
+          cp "release-files/os/${PROJECT_NAME}-linux-${JAVA_VERSION_TAG}.jar" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-linux-${JAVA_VERSION_TAG}.jar"
+          cp "release-files/os/${PROJECT_NAME}-macos-${JAVA_VERSION_TAG}.jar" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-macos-${JAVA_VERSION_TAG}.jar"
+          cp "release-files/universal/${PROJECT_NAME}-universal-${JAVA_VERSION_TAG}.jar" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-universal-${JAVA_VERSION_TAG}.jar"
+          cp "release-files/native/${PROJECT_NAME}-windows-native.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-windows-native.zip"
+          cp "release-files/native/${PROJECT_NAME}-linux-native.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-linux-native.zip"
+          cp "release-files/native/${PROJECT_NAME}-macos-native.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-macos-native.zip"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-${{ env.RELEASE_VERSION }}-windows.jar
-            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-${{ env.RELEASE_VERSION }}-linux.jar
-            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-${{ env.RELEASE_VERSION }}-macos.jar
-            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-${{ env.RELEASE_VERSION }}-universal.jar
-            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-${{ env.RELEASE_VERSION }}-windows-native.zip
-            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-${{ env.RELEASE_VERSION }}-linux-native.zip
-            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-${{ env.RELEASE_VERSION }}-macos-native.zip
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-windows-${{ env.JAVA_VERSION_TAG }}.jar
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-linux-${{ env.JAVA_VERSION_TAG }}.jar
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-macos-${{ env.JAVA_VERSION_TAG }}.jar
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-universal-${{ env.JAVA_VERSION_TAG }}.jar
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-windows-native.zip
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-linux-native.zip
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-macos-native.zip
           generate_release_notes: true
