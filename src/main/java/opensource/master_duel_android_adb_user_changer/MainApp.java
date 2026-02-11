@@ -233,9 +233,18 @@ public class MainApp extends Application {
         VBox box = new VBox(8);
         box.setPadding(new Insets(12));
 
-        Label info = new Label("Switch Master Duel users by renaming persistent folders via ADB (root required).\n" +
-                "Metadata is stored in each persistent folder as master-duel-android-adb-user-changer-metadata.properties.");
-        box.getChildren().add(info);
+        String repoUrl = "https://github.com/luckyabsoluter/master-duel-android-adb-user-changer";
+
+        TextArea info = new TextArea("Switch Master Duel users by renaming persistent folders via ADB (root required).\n" +
+                "Metadata is stored in each persistent folder as master-duel-android-adb-user-changer-metadata.properties.\n" +
+                "GitHub: " + repoUrl);
+        info.setEditable(false);
+        info.setWrapText(true);
+        info.setPrefRowCount(6);
+
+        Hyperlink githubLink = new Hyperlink("[Github]");
+        githubLink.setOnAction(event -> getHostServices().showDocument(repoUrl));
+        box.getChildren().addAll(info, githubLink);
         tab.setContent(box);
         return tab;
     }
