@@ -15,6 +15,7 @@ permissions:
 
 env:
   PROJECT_NAME: master-duel-android-adb-user-changer
+  JAVA_VERSION_TAG: java25
 
 jobs:
   build-matrix:
@@ -58,14 +59,14 @@ jobs:
           New-Item -ItemType Directory -Force -Path ci-artifacts | Out-Null
 
           Get-ChildItem build/libs/*-all.jar | ForEach-Object {
-            Copy-Item $_.FullName ("ci-artifacts/{0}-{1}.jar" -f $env:PROJECT_NAME, $osName)
+            Copy-Item $_.FullName ("ci-artifacts/{0}-{1}-{2}.jar" -f $env:PROJECT_NAME, $env:JAVA_VERSION_TAG, $osName)
           }
 
       - name: Upload OS jar artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ env.PROJECT_NAME }}-${{ matrix.os }}-${{ github.run_id }}
-          path: ci-artifacts/${{ env.PROJECT_NAME }}-*.jar
+          path: ci-artifacts/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-*.jar
           if-no-files-found: error
 
   build-universal-jar:
@@ -95,14 +96,14 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path ci-universal | Out-Null
           Get-ChildItem build/libs/*-all-universal.jar | ForEach-Object {
-            Copy-Item $_.FullName ("ci-universal/{0}-universal.jar" -f $env:PROJECT_NAME)
+            Copy-Item $_.FullName ("ci-universal/{0}-{1}-universal.jar" -f $env:PROJECT_NAME, $env:JAVA_VERSION_TAG)
           }
 
       - name: Upload universal jar artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ env.PROJECT_NAME }}-universal-${{ github.run_id }}
-          path: ci-universal/${{ env.PROJECT_NAME }}-universal.jar
+          path: ci-universal/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-universal.jar
           if-no-files-found: error
 
   release-on-tag:
@@ -130,8 +131,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release-files/os/${{ env.PROJECT_NAME }}-windows.jar
-            release-files/os/${{ env.PROJECT_NAME }}-linux.jar
-            release-files/os/${{ env.PROJECT_NAME }}-macos.jar
-            release-files/universal/${{ env.PROJECT_NAME }}-universal.jar
+            release-files/os/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-windows.jar
+            release-files/os/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-linux.jar
+            release-files/os/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-macos.jar
+            release-files/universal/${{ env.PROJECT_NAME }}-${{ env.JAVA_VERSION_TAG }}-universal.jar
           generate_release_notes: true
