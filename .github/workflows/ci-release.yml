@@ -13,6 +13,9 @@ on:
 permissions:
   contents: write
 
+env:
+  PROJECT_NAME: master-duel-android-adb-user-changer
+
 jobs:
   build-matrix:
     runs-on: ${{ matrix.os }}
@@ -55,17 +58,17 @@ jobs:
           New-Item -ItemType Directory -Force -Path ci-artifacts | Out-Null
 
           Get-ChildItem build/libs/*-all.jar | ForEach-Object {
-            Copy-Item $_.FullName ("ci-artifacts/{0}-{1}" -f $osName, $_.Name)
+            Copy-Item $_.FullName ("ci-artifacts/{0}-{1}.jar" -f $env:PROJECT_NAME, $osName)
           }
 
-      - name: Upload platform all jar artifact
+      - name: Upload OS jar artifact
         uses: actions/upload-artifact@v6
         with:
-          name: platform-all-jar-${{ matrix.os }}-${{ github.run_id }}
-          path: ci-artifacts/*-all.jar
+          name: ${{ env.PROJECT_NAME }}-${{ matrix.os }}-${{ github.run_id }}
+          path: ci-artifacts/${{ env.PROJECT_NAME }}-*.jar
           if-no-files-found: error
 
-  build-universal-fat-jar:
+  build-universal-jar:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -82,43 +85,53 @@ jobs:
         with:
           gradle-version: wrapper
 
-      - name: Build universal fat jar
+      - name: Build universal jar
         run: |
           chmod +x ./gradlew
           ./gradlew clean universalShadowJar
 
-      - name: Upload universal fat jar artifact
+      - name: Prepare universal artifact file
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path ci-universal | Out-Null
+          Get-ChildItem build/libs/*-all-universal.jar | ForEach-Object {
+            Copy-Item $_.FullName ("ci-universal/{0}-universal.jar" -f $env:PROJECT_NAME)
+          }
+
+      - name: Upload universal jar artifact
         uses: actions/upload-artifact@v6
         with:
-          name: universal-fat-jar-${{ github.run_id }}
-          path: build/libs/*-all-universal.jar
+          name: ${{ env.PROJECT_NAME }}-universal-${{ github.run_id }}
+          path: ci-universal/${{ env.PROJECT_NAME }}-universal.jar
           if-no-files-found: error
 
   release-on-tag:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs:
       - build-matrix
-      - build-universal-fat-jar
+      - build-universal-jar
     runs-on: ubuntu-latest
     steps:
-      - name: Download platform all jar artifacts
+      - name: Download OS jar artifacts
         uses: actions/download-artifact@v5
         with:
-          pattern: platform-all-jar-*-${{ github.run_id }}
-          path: release-files/platform
+          pattern: ${{ env.PROJECT_NAME }}-*-${{ github.run_id }}
+          path: release-files/os
           merge-multiple: true
 
-      - name: Download universal fat jar artifact
+      - name: Download universal jar artifact
         uses: actions/download-artifact@v5
         with:
-          pattern: universal-fat-jar-${{ github.run_id }}
-          path: release-files/fat
+          pattern: ${{ env.PROJECT_NAME }}-universal-${{ github.run_id }}
+          path: release-files/universal
           merge-multiple: true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release-files/platform/*-all.jar
-            release-files/fat/*-all-universal.jar
+            release-files/os/${{ env.PROJECT_NAME }}-windows.jar
+            release-files/os/${{ env.PROJECT_NAME }}-linux.jar
+            release-files/os/${{ env.PROJECT_NAME }}-macos.jar
+            release-files/universal/${{ env.PROJECT_NAME }}-universal.jar
           generate_release_notes: true
