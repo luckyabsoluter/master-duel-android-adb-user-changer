@@ -6,6 +6,7 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.SortedList;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
@@ -29,7 +30,8 @@ public class MainApp extends Application {
     private final AdbService adbService = new AdbService(adbPath);
 
     private final ObservableList<DeviceInfo> devices = FXCollections.observableArrayList();
-    private final ObservableList<UserProfile> users = FXCollections.observableArrayList();
+    private final ObservableList<UserProfile> userItems = FXCollections.observableArrayList();
+    private final SortedList<UserProfile> users = new SortedList<>(userItems);
 
     private final TextArea logArea = new TextArea();
     private final TextArea deviceDetails = new TextArea();
@@ -168,6 +170,8 @@ public class MainApp extends Application {
         newUserButton.setOnAction(event -> deactivateCurrentUser());
 
         row.getChildren().addAll(refreshButton, switchButton, renameButton, newUserButton);
+
+        users.comparatorProperty().bind(userTable.comparatorProperty());
 
         TableColumn<UserProfile, Boolean> activeCol = new TableColumn<>("Active");
         activeCol.setCellValueFactory(cellData -> new SimpleBooleanProperty(cellData.getValue().isActive()));
@@ -349,7 +353,7 @@ public class MainApp extends Application {
                 }
             };
             task.setOnSucceeded(event -> {
-                users.setAll(task.getValue());
+                userItems.setAll(task.getValue());
                 if (!users.isEmpty()) {
                     userTable.getSelectionModel().select(0);
                 }
