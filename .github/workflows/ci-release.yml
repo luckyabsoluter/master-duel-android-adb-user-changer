@@ -113,6 +113,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set up MSVC developer command prompt
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
         with:
@@ -148,7 +154,7 @@ jobs:
 
             Push-Location $buildPath
             $env:GRAALVM_HOME = $env:JAVA_HOME
-            .\gradlew.bat clean nativeBuild
+            .\gradlew.bat clean nativeBuild --stacktrace
             if ($LASTEXITCODE -ne 0) {
               Pop-Location
               Show-GluonLogs -BasePath $buildPath
@@ -167,7 +173,7 @@ jobs:
           } else {
             chmod +x ./gradlew
             $env:GRAALVM_HOME = $env:JAVA_HOME
-            ./gradlew clean nativeBuild
+            ./gradlew clean nativeBuild --stacktrace
             if ($LASTEXITCODE -ne 0) {
               Show-GluonLogs -BasePath $env:GITHUB_WORKSPACE
               throw "GluonFX nativeBuild failed on $env:RUNNER_OS."
