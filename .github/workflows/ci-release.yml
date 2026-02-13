@@ -125,13 +125,26 @@ jobs:
         shell: pwsh
         run: |
           if ($env:RUNNER_OS -eq "Windows") {
-            $junctionPath = "C:\workspace-graal"
-            if (-not (Test-Path $junctionPath)) {
-              cmd /c "mklink /J $junctionPath `"$env:GITHUB_WORKSPACE`""
+            $buildPath = "C:\workspace-graal-src"
+            if (Test-Path $buildPath) {
+              Remove-Item -Recurse -Force $buildPath
             }
-            Push-Location $junctionPath
+            New-Item -ItemType Directory -Force -Path $buildPath | Out-Null
+            robocopy $env:GITHUB_WORKSPACE $buildPath /E /NFL /NDL /NJH /NJS /NP /XD ".git" | Out-Null
+            if ($LASTEXITCODE -gt 7) {
+              throw "robocopy failed with exit code $LASTEXITCODE."
+            }
+
+            Push-Location $buildPath
             .\gradlew.bat clean nativeCompile
             Pop-Location
+
+            New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\ci-graal" | Out-Null
+            $nativeBin = Get-ChildItem "$buildPath\build\native\nativeCompile\$env:PROJECT_NAME*" -File | Select-Object -First 1
+            if ($null -eq $nativeBin) {
+              throw "Graal native executable not found under $buildPath\build\native\nativeCompile."
+            }
+            Compress-Archive -Path $nativeBin.FullName -DestinationPath "$env:GITHUB_WORKSPACE\ci-graal\$env:PROJECT_NAME-windows-graal.zip" -Force
           } else {
             chmod +x ./gradlew
             ./gradlew clean nativeCompile
@@ -140,6 +153,11 @@ jobs:
       - name: Prepare Graal artifact file
         shell: pwsh
         run: |
+          if ($env:RUNNER_OS -eq "Windows") {
+            Write-Host "Windows artifact already prepared during C: drive build."
+            exit 0
+          }
+
           $osName = $env:RUNNER_OS.ToLower()
           New-Item -ItemType Directory -Force -Path ci-graal | Out-Null
 
