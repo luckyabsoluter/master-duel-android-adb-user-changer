@@ -125,7 +125,13 @@ jobs:
         shell: pwsh
         run: |
           if ($env:RUNNER_OS -eq "Windows") {
+            $junctionPath = "C:\workspace-graal"
+            if (-not (Test-Path $junctionPath)) {
+              cmd /c "mklink /J $junctionPath `"$env:GITHUB_WORKSPACE`""
+            }
+            Push-Location $junctionPath
             .\gradlew.bat clean nativeCompile
+            Pop-Location
           } else {
             chmod +x ./gradlew
             ./gradlew clean nativeCompile
