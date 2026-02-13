@@ -121,6 +121,20 @@ jobs:
       - name: Build GluonFX native image
         shell: pwsh
         run: |
+          function Show-GluonLogs {
+            param([string]$BasePath)
+            $logRoot = Join-Path $BasePath "build\gluonfx"
+            if (Test-Path $logRoot) {
+              Write-Host "GluonFX log files under: $logRoot"
+              Get-ChildItem $logRoot -Recurse -File -Include *.log | ForEach-Object {
+                Write-Host "===== $($_.FullName) ====="
+                Get-Content $_.FullName -Tail 200
+              }
+            } else {
+              Write-Host "No GluonFX log directory found at: $logRoot"
+            }
+          }
+
           if ($env:RUNNER_OS -eq "Windows") {
             $buildPath = "C:\workspace-gluonfx-src"
             if (Test-Path $buildPath) {
@@ -135,6 +149,11 @@ jobs:
             Push-Location $buildPath
             $env:GRAALVM_HOME = $env:JAVA_HOME
             .\gradlew.bat clean nativeBuild
+            if ($LASTEXITCODE -ne 0) {
+              Pop-Location
+              Show-GluonLogs -BasePath $buildPath
+              throw "GluonFX nativeBuild failed on Windows."
+            }
             Pop-Location
 
             New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\ci-gluonfx" | Out-Null
@@ -149,6 +168,10 @@ jobs:
             chmod +x ./gradlew
             $env:GRAALVM_HOME = $env:JAVA_HOME
             ./gradlew clean nativeBuild
+            if ($LASTEXITCODE -ne 0) {
+              Show-GluonLogs -BasePath $env:GITHUB_WORKSPACE
+              throw "GluonFX nativeBuild failed on $env:RUNNER_OS."
+            }
           }
 
       - name: Prepare GluonFX artifact file
