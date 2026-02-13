@@ -124,6 +124,21 @@ jobs:
         with:
           gradle-version: wrapper
 
+      - name: Install Linux dependencies for GluonFX linking
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libasound2-dev \
+            libavcodec-dev \
+            libavformat-dev \
+            libavutil-dev \
+            libgl-dev \
+            libgtk-3-dev \
+            libpango1.0-dev \
+            libxtst-dev
+
       - name: Build GluonFX native image
         shell: pwsh
         run: |
@@ -132,7 +147,7 @@ jobs:
             $logRoot = Join-Path $BasePath "build\gluonfx"
             if (Test-Path $logRoot) {
               Write-Host "GluonFX log files under: $logRoot"
-              Get-ChildItem $logRoot -Recurse -File -Include *.log | ForEach-Object {
+              Get-ChildItem $logRoot -Recurse -File -Include *.log,*.log.*,*.txt | Sort-Object FullName | ForEach-Object {
                 Write-Host "===== $($_.FullName) ====="
                 Get-Content $_.FullName -Tail 200
               }
