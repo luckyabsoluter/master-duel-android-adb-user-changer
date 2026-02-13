@@ -95,6 +95,63 @@ jobs:
           path: ci-native/${{ env.PROJECT_NAME }}-*-native.zip
           if-no-files-found: error
 
+  build-graal-native:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up GraalVM JDK 25
+        uses: graalvm/setup-graalvm@v1
+        with:
+          distribution: graalvm-community
+          java-version: "25"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          native-image-job-reports: "true"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: wrapper
+
+      - name: Build GraalVM native image
+        shell: pwsh
+        run: |
+          if ($env:RUNNER_OS -eq "Windows") {
+            .\gradlew.bat clean nativeCompile
+          } else {
+            chmod +x ./gradlew
+            ./gradlew clean nativeCompile
+          }
+
+      - name: Prepare Graal artifact file
+        shell: pwsh
+        run: |
+          $osName = $env:RUNNER_OS.ToLower()
+          New-Item -ItemType Directory -Force -Path ci-graal | Out-Null
+
+          $nativeBin = Get-ChildItem "build/native/nativeCompile/${env:PROJECT_NAME}*" -File | Select-Object -First 1
+          if ($null -eq $nativeBin) {
+            throw "Graal native executable not found under build/native/nativeCompile."
+          }
+
+          $zipPath = "ci-graal/{0}-{1}-graal.zip" -f $env:PROJECT_NAME, $osName
+          Compress-Archive -Path $nativeBin.FullName -DestinationPath $zipPath -Force
+
+      - name: Upload Graal artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ env.PROJECT_NAME }}-${{ matrix.os }}-graal-${{ github.run_id }}
+          path: ci-graal/${{ env.PROJECT_NAME }}-*-graal.zip
+          if-no-files-found: error
+
   build-universal-jar:
     runs-on: ubuntu-latest
     steps:
@@ -137,6 +194,7 @@ jobs:
     needs:
       - build-matrix
       - build-universal-jar
+      - build-graal-native
     runs-on: ubuntu-latest
     env:
       RELEASE_VERSION: ${{ github.ref_name }}
@@ -162,6 +220,13 @@ jobs:
           path: release-files/native
           merge-multiple: true
 
+      - name: Download Graal artifact
+        uses: actions/download-artifact@v5
+        with:
+          pattern: ${{ env.PROJECT_NAME }}-*-graal-${{ github.run_id }}
+          path: release-files/graal
+          merge-multiple: true
+
       - name: Prepare versioned release files
         run: |
           mkdir -p release-files/versioned
@@ -172,6 +237,9 @@ jobs:
           cp "release-files/native/${PROJECT_NAME}-windows-native.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-windows-native.zip"
           cp "release-files/native/${PROJECT_NAME}-linux-native.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-linux-native.zip"
           cp "release-files/native/${PROJECT_NAME}-macos-native.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-macos-native.zip"
+          cp "release-files/graal/${PROJECT_NAME}-windows-graal.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-windows-graal.zip"
+          cp "release-files/graal/${PROJECT_NAME}-linux-graal.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-linux-graal.zip"
+          cp "release-files/graal/${PROJECT_NAME}-macos-graal.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-macos-graal.zip"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -184,4 +252,7 @@ jobs:
             release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-windows-native.zip
             release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-linux-native.zip
             release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-macos-native.zip
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-windows-graal.zip
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-linux-graal.zip
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-macos-graal.zip
           generate_release_notes: true

@@ -4,6 +4,7 @@ plugins {
     id 'com.gradleup.shadow' version '9.3.1'
     id 'org.beryx.jlink' version '3.2.1'
     id 'com.github.gmazzo.buildconfig' version '6.0.7'
+    id 'org.graalvm.buildtools.native' version '0.11.1'
 }
 
 group = 'opensource.master_duel_android_adb_user_changer'
@@ -30,6 +31,15 @@ javafx {
 application {
     mainModule = 'opensource.master_duel_android_adb_user_changer'
     mainClass = 'opensource.master_duel_android_adb_user_changer.Launcher'
+}
+
+graalvmNative {
+    binaries {
+        main {
+            imageName = 'master-duel-android-adb-user-changer'
+            mainClass = 'opensource.master_duel_android_adb_user_changer.Launcher'
+        }
+    }
 }
 
 configurations {
