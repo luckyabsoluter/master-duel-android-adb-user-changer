@@ -144,7 +144,7 @@ jobs:
             if ($null -eq $nativeBin) {
               throw "Graal native executable not found under $buildPath\build\native\nativeCompile."
             }
-            Compress-Archive -Path $nativeBin.FullName -DestinationPath "$env:GITHUB_WORKSPACE\ci-graal\$env:PROJECT_NAME-windows-graal.zip" -Force
+            Copy-Item $nativeBin.FullName "$env:GITHUB_WORKSPACE\ci-graal\$env:PROJECT_NAME-windows-graal.exe" -Force
           } else {
             chmod +x ./gradlew
             ./gradlew clean nativeCompile
@@ -166,14 +166,14 @@ jobs:
             throw "Graal native executable not found under build/native/nativeCompile."
           }
 
-          $zipPath = "ci-graal/{0}-{1}-graal.zip" -f $env:PROJECT_NAME, $osName
-          Compress-Archive -Path $nativeBin.FullName -DestinationPath $zipPath -Force
+          $artifactPath = "ci-graal/{0}-{1}-graal{2}" -f $env:PROJECT_NAME, $osName, $nativeBin.Extension
+          Copy-Item $nativeBin.FullName $artifactPath -Force
 
       - name: Upload Graal artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ env.PROJECT_NAME }}-${{ matrix.os }}-graal-${{ github.run_id }}
-          path: ci-graal/${{ env.PROJECT_NAME }}-*-graal.zip
+          path: ci-graal/${{ env.PROJECT_NAME }}-*-graal*
           if-no-files-found: error
 
   build-universal-jar:
@@ -261,9 +261,9 @@ jobs:
           cp "release-files/native/${PROJECT_NAME}-windows-native.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-windows-native.zip"
           cp "release-files/native/${PROJECT_NAME}-linux-native.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-linux-native.zip"
           cp "release-files/native/${PROJECT_NAME}-macos-native.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-macos-native.zip"
-          cp "release-files/graal/${PROJECT_NAME}-windows-graal.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-windows-graal.zip"
-          cp "release-files/graal/${PROJECT_NAME}-linux-graal.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-linux-graal.zip"
-          cp "release-files/graal/${PROJECT_NAME}-macos-graal.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-macos-graal.zip"
+          cp "release-files/graal/${PROJECT_NAME}-windows-graal.exe" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-windows-graal.exe"
+          cp "release-files/graal/${PROJECT_NAME}-linux-graal" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-linux-graal"
+          cp "release-files/graal/${PROJECT_NAME}-macos-graal" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-macos-graal"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -276,7 +276,7 @@ jobs:
             release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-windows-native.zip
             release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-linux-native.zip
             release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-macos-native.zip
-            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-windows-graal.zip
-            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-linux-graal.zip
-            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-macos-graal.zip
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-windows-graal.exe
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-linux-graal
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-macos-graal
           generate_release_notes: true
