@@ -4,13 +4,13 @@ plugins {
     id 'com.gradleup.shadow' version '9.3.1'
     id 'org.beryx.jlink' version '3.2.1'
     id 'com.github.gmazzo.buildconfig' version '6.0.7'
-    id 'org.graalvm.buildtools.native' version '0.11.1'
+    id 'com.gluonhq.gluonfx-gradle-plugin' version '1.0.28'
 }
 
 group = 'opensource.master_duel_android_adb_user_changer'
 version = '1.0.3'
 
-def javaVersion = 25
+def javaVersion = 21
 def javafxVersion = String.valueOf(javaVersion)
 
 java {
@@ -33,12 +33,26 @@ application {
     mainClass = 'opensource.master_duel_android_adb_user_changer.Launcher'
 }
 
-graalvmNative {
-    binaries {
-        main {
-            imageName = 'master-duel-android-adb-user-changer'
-            mainClass = 'opensource.master_duel_android_adb_user_changer.Launcher'
+gluonfx {
+    target = 'host'
+    enableSwRendering = false
+    def graalHome = System.getenv('GRAALVM_HOME')
+    if (graalHome == null || graalHome.trim().isEmpty()) {
+        try {
+            def process = ['mise', 'where', 'github:gluonhq/graal@gluon-23+25.1-dev-2409082136'].execute(null, project.rootDir)
+            process.waitFor()
+            if (process.exitValue() == 0) {
+                graalHome = process.in.text.trim()
+            }
+        } catch (Exception ignored) {
+            // fallback below
         }
+    }
+    if (graalHome == null || graalHome.trim().isEmpty()) {
+        graalHome = System.getenv('JAVA_HOME')
+    }
+    if (graalHome != null) {
+        graalvmHome = graalHome.trim()
     }
 }
 
