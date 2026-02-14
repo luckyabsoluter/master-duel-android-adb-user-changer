@@ -35,7 +35,8 @@ application {
 
 gluonfx {
     target = 'host'
-    enableSwRendering = false
+    // Include Prism software pipeline so runtime can fall back when ES2 init fails.
+    enableSwRendering = true
     def graalHome = System.getenv('GRAALVM_HOME')
     if (graalHome == null || graalHome.trim().isEmpty()) {
         try {
