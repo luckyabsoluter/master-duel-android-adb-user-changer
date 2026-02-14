@@ -169,6 +169,20 @@ jobs:
             }
           }
 
+          function Show-GradleDaemonLogs {
+            param([string]$BasePath)
+            $daemonRoot = Join-Path $BasePath ".gradle\daemon"
+            if (Test-Path $daemonRoot) {
+              Write-Host "Gradle daemon logs under: $daemonRoot"
+              Get-ChildItem $daemonRoot -Recurse -File -Include *.log | Sort-Object LastWriteTime | Select-Object -Last 3 | ForEach-Object {
+                Write-Host "===== $($_.FullName) ====="
+                Get-Content $_.FullName -Tail 300
+              }
+            } else {
+              Write-Host "No Gradle daemon log directory found at: $daemonRoot"
+            }
+          }
+
           if ($env:RUNNER_OS -eq "Windows") {
             $buildPath = "C:\workspace-gluonfx-src"
             if (Test-Path $buildPath) {
@@ -201,13 +215,15 @@ jobs:
           } else {
             chmod +x ./gradlew
             $env:GRAALVM_HOME = $env:JAVA_HOME
-            ./gradlew clean nativeBuild --stacktrace --info 2>&1 | Tee-Object -FilePath "$env:GITHUB_WORKSPACE/gradle-nativeBuild.log"
+            $env:ORG_GRADLE_JVMARGS = "-Xmx2048m -Xms512m -Dfile.encoding=UTF-8"
+            ./gradlew --no-daemon clean nativeBuild --stacktrace --info --console=plain 2>&1 | Tee-Object -FilePath "$env:GITHUB_WORKSPACE/gradle-nativeBuild.log"
             if ($LASTEXITCODE -ne 0) {
               if (Test-Path "$env:GITHUB_WORKSPACE/gradle-nativeBuild.log") {
                 Write-Host "===== Gradle nativeBuild log (tail) ====="
                 Get-Content "$env:GITHUB_WORKSPACE/gradle-nativeBuild.log" -Tail 400
               }
               Show-GluonLogs -BasePath $env:GITHUB_WORKSPACE
+              Show-GradleDaemonLogs -BasePath $env:GITHUB_WORKSPACE
               throw "GluonFX nativeBuild failed on $env:RUNNER_OS."
             }
           }
