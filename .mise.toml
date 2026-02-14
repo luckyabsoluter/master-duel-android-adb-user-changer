@@ -1,2 +1,7 @@
+[env]
+TEMP = "C:\\Temp"
+TMP = "C:\\Temp"
+
 [tools]
-java = "temurin-25"
+"github:gluonhq/graal" = "gluon-23+25.1-dev-2409082136"
+java = "graalvm-community-25.0.2"

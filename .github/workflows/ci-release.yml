@@ -38,7 +38,7 @@ jobs:
           java-version: "25"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v5.0.1
         with:
           gradle-version: wrapper
 
@@ -95,6 +95,178 @@ jobs:
           path: ci-native/${{ env.PROJECT_NAME }}-*-native.zip
           if-no-files-found: error
 
+  build-gluonfx-native:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup GraalVM built by Gluon (macOS aarch64)
+        if: runner.os == 'macOS'
+        uses: gluonhq/setup-graalvm@master
+        with:
+          arch: aarch64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup GraalVM built by Gluon (non-macOS)
+        if: runner.os != 'macOS'
+        uses: gluonhq/setup-graalvm@master
+        with:
+          arch: x86_64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up MSVC developer command prompt
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5.0.1
+        with:
+          gradle-version: wrapper
+
+      - name: Install Linux dependencies for GluonFX linking
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            libasound2-dev \
+            libavcodec-dev \
+            libavformat-dev \
+            libavutil-dev \
+            libfontconfig1-dev \
+            libfreetype6-dev \
+            libglib2.0-dev \
+            libgl-dev \
+            libgtk-3-dev \
+            libpango1.0-dev \
+            libx11-dev \
+            libxext-dev \
+            libxrandr-dev \
+            libxrender-dev \
+            libxt-dev \
+            libxtst-dev \
+            libxxf86vm-dev \
+            zlib1g-dev
+
+      - name: Build GluonFX native image
+        shell: pwsh
+        run: |
+          function Show-GluonLogs {
+            param([string]$BasePath)
+            $logRoot = Join-Path $BasePath "build\gluonfx"
+            if (Test-Path $logRoot) {
+              Write-Host "GluonFX log files under: $logRoot"
+              Get-ChildItem $logRoot -Recurse -File |
+                Where-Object { $_.Name -notlike "*.lck" -and ($_.Name -like "*.log" -or $_.Name -like "*.log.*" -or $_.Name -like "*.txt") } |
+                Sort-Object FullName | ForEach-Object {
+                Write-Host "===== $($_.FullName) ====="
+                Get-Content $_.FullName -Tail 200
+              }
+            } else {
+              Write-Host "No GluonFX log directory found at: $logRoot"
+            }
+          }
+
+          function Show-GradleDaemonLogs {
+            param([string]$BasePath)
+            $daemonRoot = Join-Path $BasePath ".gradle\daemon"
+            if (Test-Path $daemonRoot) {
+              Write-Host "Gradle daemon logs under: $daemonRoot"
+              Get-ChildItem $daemonRoot -Recurse -File -Include *.log | Sort-Object LastWriteTime | Select-Object -Last 3 | ForEach-Object {
+                Write-Host "===== $($_.FullName) ====="
+                Get-Content $_.FullName -Tail 300
+              }
+            } else {
+              Write-Host "No Gradle daemon log directory found at: $daemonRoot"
+            }
+          }
+
+          if ($env:RUNNER_OS -eq "Windows") {
+            $buildPath = "C:\workspace-gluonfx-src"
+            if (Test-Path $buildPath) {
+              Remove-Item -Recurse -Force $buildPath
+            }
+            New-Item -ItemType Directory -Force -Path $buildPath | Out-Null
+            robocopy $env:GITHUB_WORKSPACE $buildPath /E /NFL /NDL /NJH /NJS /NP /XD ".git" | Out-Null
+            if ($LASTEXITCODE -gt 7) {
+              throw "robocopy failed with exit code $LASTEXITCODE."
+            }
+
+            Push-Location $buildPath
+            $env:GRAALVM_HOME = $env:JAVA_HOME
+            .\gradlew.bat clean nativeBuild --stacktrace
+            if ($LASTEXITCODE -ne 0) {
+              Pop-Location
+              Show-GluonLogs -BasePath $buildPath
+              throw "GluonFX nativeBuild failed on Windows."
+            }
+            Pop-Location
+
+            New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\ci-gluonfx" | Out-Null
+            $nativeBin = Get-ChildItem "$buildPath\build\gluonfx" -Recurse -File |
+              Where-Object { $_.Name -eq "$env:PROJECT_NAME.exe" } |
+              Select-Object -First 1
+            if ($null -eq $nativeBin) {
+              throw "GluonFX native executable not found under $buildPath\build\gluonfx."
+            }
+            Copy-Item $nativeBin.FullName "$env:GITHUB_WORKSPACE\ci-gluonfx\$env:PROJECT_NAME-windows-gluonfx.exe" -Force
+          } else {
+            chmod +x ./gradlew
+            $env:GRAALVM_HOME = $env:JAVA_HOME
+            $env:ORG_GRADLE_JVMARGS = "-Xmx2048m -Xms512m -Dfile.encoding=UTF-8"
+            ./gradlew --no-daemon clean nativeBuild --stacktrace --info --console=plain 2>&1 | Tee-Object -FilePath "$env:GITHUB_WORKSPACE/gradle-nativeBuild.log"
+            if ($LASTEXITCODE -ne 0) {
+              if (Test-Path "$env:GITHUB_WORKSPACE/gradle-nativeBuild.log") {
+                Write-Host "===== Gradle nativeBuild log (tail) ====="
+                Get-Content "$env:GITHUB_WORKSPACE/gradle-nativeBuild.log" -Tail 400
+              }
+              Show-GluonLogs -BasePath $env:GITHUB_WORKSPACE
+              Show-GradleDaemonLogs -BasePath $env:GITHUB_WORKSPACE
+              throw "GluonFX nativeBuild failed on $env:RUNNER_OS."
+            }
+          }
+
+      - name: Prepare GluonFX artifact file
+        shell: pwsh
+        run: |
+          if ($env:RUNNER_OS -eq "Windows") {
+            Write-Host "Windows artifact already prepared during C: drive build."
+            exit 0
+          }
+
+          $osName = $env:RUNNER_OS.ToLower()
+          New-Item -ItemType Directory -Force -Path ci-gluonfx | Out-Null
+
+          $nativeBin = Get-ChildItem "build/gluonfx" -Recurse -File |
+            Where-Object { $_.Name -eq $env:PROJECT_NAME } |
+            Select-Object -First 1
+          if ($null -eq $nativeBin) {
+            throw "GluonFX native executable not found under build/gluonfx."
+          }
+
+          $artifactPath = "ci-gluonfx/{0}-{1}-gluonfx{2}" -f $env:PROJECT_NAME, $osName, $nativeBin.Extension
+          Copy-Item $nativeBin.FullName $artifactPath -Force
+
+      - name: Upload GluonFX artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ env.PROJECT_NAME }}-${{ matrix.os }}-gluonfx-${{ github.run_id }}
+          path: ci-gluonfx/${{ env.PROJECT_NAME }}-*-gluonfx*
+          if-no-files-found: error
+
   build-universal-jar:
     runs-on: ubuntu-latest
     steps:
@@ -108,7 +280,7 @@ jobs:
           java-version: "25"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v5.0.1
         with:
           gradle-version: wrapper
 
@@ -137,6 +309,7 @@ jobs:
     needs:
       - build-matrix
       - build-universal-jar
+      - build-gluonfx-native
     runs-on: ubuntu-latest
     env:
       RELEASE_VERSION: ${{ github.ref_name }}
@@ -162,6 +335,13 @@ jobs:
           path: release-files/native
           merge-multiple: true
 
+      - name: Download GluonFX artifact
+        uses: actions/download-artifact@v5
+        with:
+          pattern: ${{ env.PROJECT_NAME }}-*-gluonfx-${{ github.run_id }}
+          path: release-files/gluonfx
+          merge-multiple: true
+
       - name: Prepare versioned release files
         run: |
           mkdir -p release-files/versioned
@@ -172,6 +352,9 @@ jobs:
           cp "release-files/native/${PROJECT_NAME}-windows-native.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-windows-native.zip"
           cp "release-files/native/${PROJECT_NAME}-linux-native.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-linux-native.zip"
           cp "release-files/native/${PROJECT_NAME}-macos-native.zip" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-macos-native.zip"
+          cp "release-files/gluonfx/${PROJECT_NAME}-windows-gluonfx.exe" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-windows-gluonfx.exe"
+          cp "release-files/gluonfx/${PROJECT_NAME}-linux-gluonfx" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-linux-gluonfx"
+          cp "release-files/gluonfx/${PROJECT_NAME}-macos-gluonfx" "release-files/versioned/${PROJECT_NAME}-${RELEASE_VERSION}-macos-gluonfx"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -184,4 +367,7 @@ jobs:
             release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-windows-native.zip
             release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-linux-native.zip
             release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-macos-native.zip
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-windows-gluonfx.exe
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-linux-gluonfx
+            release-files/versioned/${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}-macos-gluonfx
           generate_release_notes: true
