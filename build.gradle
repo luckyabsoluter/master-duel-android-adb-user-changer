@@ -56,6 +56,53 @@ gluonfx {
     }
 }
 
+def ensureLinuxGraalStaticLibCompatibility = {
+    if (!org.gradle.internal.os.OperatingSystem.current().isLinux()) {
+        return
+    }
+
+    def graalHome = project.extensions.findByName('gluonfx')?.graalvmHome
+    if (graalHome == null || graalHome.toString().trim().isEmpty()) {
+        graalHome = System.getenv('GRAALVM_HOME')
+    }
+    if (graalHome == null || graalHome.toString().trim().isEmpty()) {
+        graalHome = System.getenv('JAVA_HOME')
+    }
+    if (graalHome == null || graalHome.toString().trim().isEmpty()) {
+        return
+    }
+
+    def clibRoot = file("${graalHome.toString().trim()}/lib/svm/clibraries/linux-amd64")
+    def glibcDir = new File(clibRoot, "glibc")
+    if (!glibcDir.isDirectory()) {
+        return
+    }
+
+    ['libjvm.a', 'liblibchelper.a'].each { libName ->
+        def source = new File(glibcDir, libName)
+        def target = new File(clibRoot, libName)
+        if (!target.exists() && source.isFile()) {
+            logger.lifecycle("Preparing Graal static library compatibility: ${target}")
+            try {
+                def relativeSource = target.parentFile.toPath().relativize(source.toPath())
+                java.nio.file.Files.createSymbolicLink(target.toPath(), relativeSource)
+            } catch (UnsupportedOperationException | IOException ignored) {
+                java.nio.file.Files.copy(
+                        source.toPath(),
+                        target.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                )
+            }
+        }
+    }
+}
+
+tasks.matching { it.name == 'nativeLink' }.configureEach {
+    doFirst {
+        ensureLinuxGraalStaticLibCompatibility()
+    }
+}
+
 configurations {
     javafxWin
     javafxLinux
