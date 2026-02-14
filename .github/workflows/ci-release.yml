@@ -130,10 +130,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
+            pkg-config \
             libasound2-dev \
             libavcodec-dev \
             libavformat-dev \
             libavutil-dev \
+            libfontconfig1-dev \
+            libfreetype6-dev \
             libglib2.0-dev \
             libgl-dev \
             libgtk-3-dev \
@@ -155,7 +158,9 @@ jobs:
             $logRoot = Join-Path $BasePath "build\gluonfx"
             if (Test-Path $logRoot) {
               Write-Host "GluonFX log files under: $logRoot"
-              Get-ChildItem $logRoot -Recurse -File -Include *.log,*.log.*,*.txt | Sort-Object FullName | ForEach-Object {
+              Get-ChildItem $logRoot -Recurse -File |
+                Where-Object { $_.Name -notlike "*.lck" -and ($_.Name -like "*.log" -or $_.Name -like "*.log.*" -or $_.Name -like "*.txt") } |
+                Sort-Object FullName | ForEach-Object {
                 Write-Host "===== $($_.FullName) ====="
                 Get-Content $_.FullName -Tail 200
               }
@@ -196,8 +201,12 @@ jobs:
           } else {
             chmod +x ./gradlew
             $env:GRAALVM_HOME = $env:JAVA_HOME
-            ./gradlew clean nativeBuild --stacktrace --info
+            ./gradlew clean nativeBuild --stacktrace --info 2>&1 | Tee-Object -FilePath "$env:GITHUB_WORKSPACE/gradle-nativeBuild.log"
             if ($LASTEXITCODE -ne 0) {
+              if (Test-Path "$env:GITHUB_WORKSPACE/gradle-nativeBuild.log") {
+                Write-Host "===== Gradle nativeBuild log (tail) ====="
+                Get-Content "$env:GITHUB_WORKSPACE/gradle-nativeBuild.log" -Tail 400
+              }
               Show-GluonLogs -BasePath $env:GITHUB_WORKSPACE
               throw "GluonFX nativeBuild failed on $env:RUNNER_OS."
             }
