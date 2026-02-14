@@ -110,7 +110,7 @@ jobs:
 
       - name: Setup GraalVM built by Gluon (macOS aarch64)
         if: runner.os == 'macOS'
-        uses: gluonhq/setup-graalvm@3a9b11a45ef0ecad69107f5884b5dbbb7b806e1c # pinned from master branch
+        uses: gluonhq/setup-graalvm@master
         with:
           arch: aarch64
         env:
@@ -118,7 +118,7 @@ jobs:
 
       - name: Setup GraalVM built by Gluon (non-macOS)
         if: runner.os != 'macOS'
-        uses: gluonhq/setup-graalvm@3a9b11a45ef0ecad69107f5884b5dbbb7b806e1c # pinned from master branch
+        uses: gluonhq/setup-graalvm@master
         with:
           arch: x86_64
         env:
