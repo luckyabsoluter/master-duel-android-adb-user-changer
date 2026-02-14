@@ -520,7 +520,7 @@ public class MainApp extends Application {
     }
 
     public static void main(String[] args) {
-        launch(MainApp.class, args);
+        launch(args);
     }
 
     private String resolveAppVersion() {

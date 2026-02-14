@@ -4,13 +4,12 @@ plugins {
     id 'com.gradleup.shadow' version '9.3.1'
     id 'org.beryx.jlink' version '3.2.1'
     id 'com.github.gmazzo.buildconfig' version '6.0.7'
-    id 'com.gluonhq.gluonfx-gradle-plugin' version '1.0.28'
 }
 
 group = 'opensource.master_duel_android_adb_user_changer'
 version = '1.1.0'
 
-def javaVersion = 21
+def javaVersion = 25
 def javafxVersion = String.valueOf(javaVersion)
 
 java {
@@ -31,77 +30,6 @@ javafx {
 application {
     mainModule = 'opensource.master_duel_android_adb_user_changer'
     mainClass = 'opensource.master_duel_android_adb_user_changer.Launcher'
-}
-
-gluonfx {
-    target = 'host'
-    // Include Prism software pipeline so runtime can fall back when ES2 init fails.
-    enableSwRendering = true
-    def graalHome = System.getenv('GRAALVM_HOME')
-    if (graalHome == null || graalHome.trim().isEmpty()) {
-        try {
-            def process = ['mise', 'where', 'github:gluonhq/graal@gluon-23+25.1-dev-2409082136'].execute(null, project.rootDir)
-            process.waitFor()
-            if (process.exitValue() == 0) {
-                graalHome = process.in.text.trim()
-            }
-        } catch (Exception ignored) {
-            // fallback below
-        }
-    }
-    if (graalHome == null || graalHome.trim().isEmpty()) {
-        graalHome = System.getenv('JAVA_HOME')
-    }
-    if (graalHome != null) {
-        graalvmHome = graalHome.trim()
-    }
-}
-
-def ensureLinuxGraalStaticLibCompatibility = {
-    if (!org.gradle.internal.os.OperatingSystem.current().isLinux()) {
-        return
-    }
-
-    def graalHome = project.extensions.findByName('gluonfx')?.graalvmHome
-    if (graalHome == null || graalHome.toString().trim().isEmpty()) {
-        graalHome = System.getenv('GRAALVM_HOME')
-    }
-    if (graalHome == null || graalHome.toString().trim().isEmpty()) {
-        graalHome = System.getenv('JAVA_HOME')
-    }
-    if (graalHome == null || graalHome.toString().trim().isEmpty()) {
-        return
-    }
-
-    def clibRoot = file("${graalHome.toString().trim()}/lib/svm/clibraries/linux-amd64")
-    def glibcDir = new File(clibRoot, "glibc")
-    if (!glibcDir.isDirectory()) {
-        return
-    }
-
-    ['libjvm.a', 'liblibchelper.a'].each { libName ->
-        def source = new File(glibcDir, libName)
-        def target = new File(clibRoot, libName)
-        if (!target.exists() && source.isFile()) {
-            logger.lifecycle("Preparing Graal static library compatibility: ${target}")
-            try {
-                def relativeSource = target.parentFile.toPath().relativize(source.toPath())
-                java.nio.file.Files.createSymbolicLink(target.toPath(), relativeSource)
-            } catch (UnsupportedOperationException | IOException ignored) {
-                java.nio.file.Files.copy(
-                        source.toPath(),
-                        target.toPath(),
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING
-                )
-            }
-        }
-    }
-}
-
-tasks.matching { it.name == 'nativeLink' }.configureEach {
-    doFirst {
-        ensureLinuxGraalStaticLibCompatibility()
-    }
 }
 
 configurations {
