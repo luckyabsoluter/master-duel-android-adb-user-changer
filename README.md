@@ -8,6 +8,9 @@ This app is for:
 - Regular users who want a simple button-driven workflow
 - Developers who want to extend or automate the tool
 
+<img width="944" height="358" alt="image" src="https://github.com/user-attachments/assets/787c8374-8206-443b-8927-15c7ad507c73" />
+<img width="944" height="358" alt="image" src="https://github.com/user-attachments/assets/8aa8f535-fc06-4003-80f6-9d76d1f5fab8" />
+
 ## What It Does
 - Activate a selected profile
 - Deactivate the current profile so a fresh one is created on next app launch
