@@ -38,7 +38,7 @@ jobs:
           java-version: "25"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v5.0.1
         with:
           gradle-version: wrapper
 
@@ -120,7 +120,7 @@ jobs:
           arch: x64
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v5.0.1
         with:
           gradle-version: wrapper
 
@@ -269,7 +269,7 @@ jobs:
           java-version: "25"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v5.0.1
         with:
           gradle-version: wrapper
 
