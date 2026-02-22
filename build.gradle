@@ -128,3 +128,46 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.release = javaVersion
 }
+
+tasks.named('run', JavaExec).configure {
+    if (project.hasProperty('nativeMetadataAutoExitSeconds')) {
+        jvmArgs("-Dnative.metadata.autoExitSeconds=${project.property('nativeMetadataAutoExitSeconds')}")
+    }
+    if (project.hasProperty('nativeMetadataTabSweep')) {
+        jvmArgs("-Dnative.metadata.tabSweep=${project.property('nativeMetadataTabSweep')}")
+    }
+    if (project.hasProperty('nativeMetadataTabSweepIntervalMillis')) {
+        jvmArgs("-Dnative.metadata.tabSweepIntervalMillis=${project.property('nativeMetadataTabSweepIntervalMillis')}")
+    }
+}
+
+def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
+def nativeCompileOutputDir = layout.buildDirectory.dir('native/nativeCompile')
+def javafxWindowsNativeDlls = [
+        'decora_sse.dll',
+        'glass.dll',
+        'javafx_font.dll',
+        'javafx_iio.dll',
+        'prism_common.dll',
+        'prism_d3d.dll',
+        'prism_sw.dll'
+]
+
+tasks.register('copyJavafxWindowsNativeDlls', Copy) {
+    onlyIf { isWindows }
+    dependsOn tasks.named('nativeCompile')
+    into(nativeCompileOutputDir)
+    from({
+        configurations.runtimeClasspath.files
+                .findAll { it.name.startsWith('javafx-graphics-') && it.name.endsWith('-win.jar') }
+                .collect { zipTree(it) }
+    }) {
+        javafxWindowsNativeDlls.each { dllName ->
+            include dllName
+        }
+    }
+}
+
+tasks.named('nativeCompile') {
+    finalizedBy(tasks.named('copyJavafxWindowsNativeDlls'))
+}

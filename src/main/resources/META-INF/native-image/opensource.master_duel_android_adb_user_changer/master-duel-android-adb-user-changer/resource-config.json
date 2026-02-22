@@ -1,0 +1,28 @@
+{
+  "resources": {
+    "includes": [
+      {
+        "pattern": "\\Qstyles.css\\E"
+      },
+      {
+        "pattern": "com/sun/javafx/scene/control/skin/modena/.*"
+      },
+      {
+        "pattern": "com/sun/javafx/scene/control/skin/caspian/.*"
+      },
+      {
+        "pattern": "com/sun/javafx/scene/control/skin/resources/controls.*"
+      },
+      {
+        "pattern": "com/sun/javafx/tk/quantum/QuantumMessagesBundle.*"
+      },
+      {
+        "pattern": "com/sun/glass/ui/win/themes.*"
+      },
+      {
+        "pattern": "com/sun/prism/d3d/hlsl/.*\\.obj"
+      }
+    ]
+  },
+  "bundles": []
+}

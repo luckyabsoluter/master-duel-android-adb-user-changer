@@ -70,6 +70,9 @@ mise use -g java@temurin-25
 
 Output: `build/libs/master-duel-android-adb-user-changer-<version>-all.jar`
 
+### Native Build and Packaging
+- For GraalVM native build prerequisites, commands (PowerShell/bash), metadata collection flow, and troubleshooting, see [GraalVM Native Integration Guide](docs/native-image-integration.md).
+
 ### Design Notes
 - All ADB commands are executed via `adb shell su -c`.
 - Write operations use stdin piping to avoid shell escaping issues.

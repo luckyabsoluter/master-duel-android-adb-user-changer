@@ -2,6 +2,9 @@ package opensource.master_duel_android_adb_user_changer;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.animation.PauseTransition;
+import javafx.animation.Timeline;
+import javafx.animation.KeyFrame;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -17,7 +20,9 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
+import java.net.URL;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -39,13 +44,17 @@ public class MainApp extends Application {
 
     private final ComboBox<DeviceInfo> deviceCombo = new ComboBox<>(devices);
     private final TableView<UserProfile> userTable = new TableView<>(users);
+    private TabPane mainTabs;
 
     private final Label adbVersionLabel = new Label("ADB version: unknown");
 
     @Override
     public void start(Stage primaryStage) {
         Scene scene = new Scene(buildRoot(), 1100, 720);
-        scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
+        URL appStylesheet = getClass().getResource("/styles.css");
+        if (appStylesheet != null) {
+            scene.getStylesheets().add(appStylesheet.toExternalForm());
+        }
 
         primaryStage.setTitle("Master Duel Android ADB User Changer v" + appVersion);
         primaryStage.setScene(scene);
@@ -53,12 +62,56 @@ public class MainApp extends Application {
 
         refreshAdbVersion();
         refreshDevices();
+        autoSweepTabsForNativeMetadataCollection();
+        autoExitForNativeMetadataCollection();
+    }
+
+    private void autoSweepTabsForNativeMetadataCollection() {
+        if (!Boolean.getBoolean("native.metadata.tabSweep")) {
+            return;
+        }
+        if (mainTabs == null || mainTabs.getTabs().isEmpty()) {
+            return;
+        }
+        int intervalMillis = Integer.getInteger("native.metadata.tabSweepIntervalMillis", 700);
+        if (intervalMillis < 100) {
+            intervalMillis = 100;
+        }
+        Timeline timeline = new Timeline();
+        for (int tabIndex = 0; tabIndex < mainTabs.getTabs().size(); tabIndex++) {
+            final int targetIndex = tabIndex;
+            timeline.getKeyFrames().add(
+                    new KeyFrame(Duration.millis((long) (tabIndex + 1) * intervalMillis),
+                            event -> mainTabs.getSelectionModel().select(targetIndex))
+            );
+        }
+        timeline.play();
+    }
+
+    private void autoExitForNativeMetadataCollection() {
+        String secondsProp = System.getProperty("native.metadata.autoExitSeconds", "").trim();
+        if (secondsProp.isEmpty()) {
+            return;
+        }
+        int seconds;
+        try {
+            seconds = Integer.parseInt(secondsProp);
+        } catch (NumberFormatException ignored) {
+            return;
+        }
+        if (seconds <= 0) {
+            return;
+        }
+        PauseTransition timer = new PauseTransition(Duration.seconds(seconds));
+        timer.setOnFinished(event -> Platform.exit());
+        timer.play();
     }
 
     private BorderPane buildRoot() {
         BorderPane root = new BorderPane();
         root.setTop(buildHeader());
-        root.setCenter(buildTabs());
+        mainTabs = buildTabs();
+        root.setCenter(mainTabs);
         return root;
     }
 
@@ -520,7 +573,7 @@ public class MainApp extends Application {
     }
 
     public static void main(String[] args) {
-        launch(args);
+        launch(MainApp.class, args);
     }
 
     private String resolveAppVersion() {
