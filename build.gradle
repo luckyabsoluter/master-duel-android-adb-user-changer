@@ -142,7 +142,6 @@ tasks.named('run', JavaExec).configure {
 }
 
 def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
-def nativeCompileOutputDir = layout.buildDirectory.dir('native/nativeCompile')
 def javafxWindowsNativeDlls = [
         'decora_sse.dll',
         'glass.dll',
@@ -152,22 +151,19 @@ def javafxWindowsNativeDlls = [
         'prism_d3d.dll',
         'prism_sw.dll'
 ]
+def javafxWindowsNativeDllResourceDir = 'javafx-native/win'
 
-tasks.register('copyJavafxWindowsNativeDlls', Copy) {
-    onlyIf { isWindows }
-    dependsOn tasks.named('nativeCompile')
-    into(nativeCompileOutputDir)
-    from({
-        configurations.runtimeClasspath.files
-                .findAll { it.name.startsWith('javafx-graphics-') && it.name.endsWith('-win.jar') }
-                .collect { zipTree(it) }
-    }) {
-        javafxWindowsNativeDlls.each { dllName ->
-            include dllName
+tasks.named('processResources') {
+    if (isWindows) {
+        from({
+            configurations.runtimeClasspath.files
+                    .findAll { it.name.startsWith('javafx-graphics-') && it.name.endsWith('-win.jar') }
+                    .collect { zipTree(it) }
+        }) {
+            javafxWindowsNativeDlls.each { dllName ->
+                include dllName
+            }
+            into(javafxWindowsNativeDllResourceDir)
         }
     }
-}
-
-tasks.named('nativeCompile') {
-    finalizedBy(tasks.named('copyJavafxWindowsNativeDlls'))
 }

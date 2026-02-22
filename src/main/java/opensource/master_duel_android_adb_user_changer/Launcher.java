@@ -4,6 +4,7 @@ import javafx.application.Application;
 
 public class Launcher {
     public static void main(String[] args) {
+        JavafxWindowsNativeDllBootstrap.preloadIfWindows();
         Application.launch(MainApp.class, args);
     }
 }

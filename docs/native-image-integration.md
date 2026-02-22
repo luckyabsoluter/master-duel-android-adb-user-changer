@@ -11,7 +11,8 @@ Goal:
 Important scope note:
 - Single-file vs multi-file distribution is primarily a packaging-strategy choice, not an OS-only rule.
 - `jpackage` creates an app image/installer bundle (directory layout), not a pure single standalone binary.
-- In this project we use `nativeCompile` and place required JavaFX native libraries next to the executable.
+- In this project we use `nativeCompile` and bundle required JavaFX Windows DLLs into the native image resources, then preload them at startup.
+- GraalVM on Windows still emits some runtime/JDK shim DLLs (`awt.dll`, `jvm.dll`, etc.); `--static` is Linux-only.
 
 ## Native Integration Components
 
@@ -28,7 +29,7 @@ Why:
 
 What:
 - Native image entry point is `opensource.master_duel_android_adb_user_changer.Launcher`.
-- `Launcher` calls `Application.launch(MainApp.class, args)`.
+- `Launcher` preloads bundled JavaFX Windows DLLs when needed, then calls `Application.launch(MainApp.class, args)`.
 
 Why:
 - Keeping a dedicated launcher class is the stable JavaFX entry pattern for native image.
@@ -47,7 +48,7 @@ Why:
 ### 4) Resource metadata (`resource-config.json`)
 
 What:
-- Includes CSS, JavaFX skin resources, message bundles, and Prism shader objects.
+- Includes CSS, JavaFX skin resources, message bundles, Prism shader objects, and bundled JavaFX Windows DLL resources.
 
 Why:
 - Native image only packs resources that are explicitly reachable.
@@ -66,14 +67,17 @@ Maintenance rule:
 - Treat this file as generated/derived metadata.
 - Do not hand-edit unless you know exactly what you are changing.
 
-### 6) JavaFX Windows DLL copy task (`copyJavafxWindowsNativeDlls`)
+### 6) JavaFX Windows DLL embed + preload
 
 What:
-- After `nativeCompile`, Gradle copies required JavaFX DLLs into `build/native/nativeCompile`.
+- During `processResources` on Windows, Gradle extracts required DLLs from `javafx-graphics-*-win.jar` into app resources (`javafx-native/win`).
+- At startup, `JavafxWindowsNativeDllBootstrap` extracts those DLLs to a temp directory and prepends that path to `java.library.path` before JavaFX launch.
 
 Why:
 - JavaFX native libraries are loaded at runtime.
-- If DLLs are missing, executable may start but crash/fail on UI operations.
+- Keeping DLLs inside native image resources enables single-file distribution without sidecar JavaFX DLL files.
+- If bundled DLL resources are missing, executable may start but fail when JavaFX initializes.
+- GraalVM-generated JDK shim DLLs are separate from JavaFX DLLs and are not removed by this step.
 
 ## Build Prerequisites
 
@@ -108,6 +112,7 @@ Output directory:
 
 Main executable:
 - Windows: `master-duel-android-adb-user-changer.exe`
+- JavaFX sidecar DLL deployment is not required.
 
 ## Runtime Metadata Sweep (for agent collection and validation)
 
@@ -177,6 +182,10 @@ Crash after switching tabs in native exe
 Styles/theme/resources missing
 - Cause: Resource not included in native image.
 - Action: Add/verify include patterns in `resource-config.json`.
+
+`Missing bundled JavaFX DLL resource` error at startup
+- Cause: JavaFX Windows DLL resources were not packaged into the native image.
+- Action: Verify `processResources` embed step and `resource-config.json` include pattern for `javafx-native/win/.*\\.dll`.
 
 Executable runs in one shell invocation but not another
 - Cause: Shell argument parsing differences (especially PowerShell).
